@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=<device-width>, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <button id="increment">+1</button>
+    <span id="count">0</span>
+    <button id="decrement">-1</button>
+    <script src="./myRedux.js"></script>
+    <script src="./middlewares/logger.js"></script>
+    <script src="./middlewares/thunk.js"></script>
+    <script>
+
+        // 增强函数
+        function enhancer (createStore) {
+            return function(reducer,preloadedState) {
+                var store = createStore(reducer,preloadedState)
+                var dispatch = store.dispatch;
+                function _dispatch (action) {
+                    if(typeof action === 'function') {
+                        // 这里就可以处理异步了
+                        return action(dispatch)
+                    }
+                    dispatch(action)
+                }
+                return {
+                    ...store,
+                    dispatch:_dispatch
+                }
+            }
+        }
+
+        // 创建reduce函数
+        function reducer (state,action) {
+            switch (action.type) {
+                case 'increment':
+                    return state+10
+                case 'decrement':
+                    return state-1
+                default:
+                return state
+            }
+        }
+        
+        // 将一个个小的reduce转换成一个大的reduce
+        // 第一个参数是一个对象,对象里是一个个小的reduce
+        // 返回值是一个reducer函数 reducer函数它有两个参数一个是state一个是action
+        var rootReducer = combineReducers({counter:reducer})
+
+        // 创建store
+        // var store = createStore(reducer,0,enhancer)
+        // var store = createStore(reducer,0,applyMiddleware(logger,thunk))
+        var store = createStore(rootReducer,{counter:100},applyMiddleware(logger,thunk))
+        console.log(store)
+
+        document.getElementById('increment').onclick = function(){
+            // 触发action 让状态+1
+            // store.dispatch(function(dispatch){
+            //     store.dispatch({type:'increment'})
+            //     setTimeout(function(){
+            //         store.dispatch({type:'increment'})
+            //     },1000)
+            // })
+            // logger -> thunk -> reducer
+            //store.dispatch({type:'increment'})
+
+            actions.increment()
+        }
+
+        document.getElementById('decrement').onclick = function(){
+            // 触发action 让状态-1
+            // store.dispatch({type:'decrement'})
+
+            actions.decrement()
+        }
+
+        // 订阅
+        store.subscribe(function(){
+            document.getElementById('count').innerHTML = store.getState().counter
+        })
+
+        function increment () {
+            return {type:'increment'}
+        }
+        function decrement () {
+            return {type:'decrement'}
+        }
+
+        var actions = bindActionCreators({increment,decrement},store.dispatch)
+
+    </script>
+</body>
+</html>
